@@ -1,0 +1,269 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="UTF-1">
+    <style>
+  section, charinput {
+      padding-bottom: 10px;
+    }
+     table, td {
+       border: 1px solid black;
+     }
+    th, td {
+      text-align: left;
+      padding: 2px;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+    <header>
+      <h1>What Keeps Killing Me?</h1>
+    </header>
+      <script src="https://code.jquery.com/jquery-2.1.4.js"></script>
+      <section id="charinput">
+        <input type="number" placeholder="Enter a Player ID#" id="PID">
+        <button id="bSearch" onclick="fetchData()">Search</button>
+      </section>
+      </section id="sorting_btns">
+        <button id="bCats" onclick="showCats()" disabled>Totals By Category</button>
+        <button id="bWeps" onclick="showWeps()" disabled>Totals By Weapon</button>
+      </section>
+      <section id="info">
+        <p><i>Click a Column Header to sort data Alphabetically/Numerically.</i></p>
+      </section>
+        <p2 id="text">Showing Stats for:</p2>
+        <p id="count">Total Deaths:</p>
+      <section id="output">
+        <table id="myTable">
+          <tr>
+            <th onclick="sortTable(0)">-Item-</th>
+            <th onclick="sortTable(1)">-Category-</th>
+            <th onclick="sortTable(2)">-By VS-</th>
+            <th onclick="sortTable(3)">-By NC-</th>
+            <th onclick="sortTable(4)">-By TR-</th>
+            <th onclick="sortTable(5)">-Total-</th>
+          </tr>
+        </table>
+        <table id="myTable2" hidden>
+          <thead>
+            <tr>
+              <th onclick="sortTable2(0)">-Category-</th>
+              <th onclick="sortTable2(1)">-Total Deaths-</th>
+            <tr>
+          </thead>
+          <tbody id="cat_body">
+          </tbody>
+        </table>
+      </section>
+    </div>
+    <script>
+
+      function fetchData() {
+        const player_id_num = document.getElementById("PID").value;
+        //pre-define vars
+        var table = document.getElementById("myTable");
+        //table.innerHTML = "";
+        var total = 0;
+        var cat_name = '';
+        var vs = '';
+        var nc = '';
+        var tr = '';
+        var sum = '';
+
+        $.ajax({
+            url: "https://census.daybreakgames.com/s:5550179/json/get/ps2:v2/character/"+player_id_num+"?c:resolve=weapon_stat_by_faction",
+            type: "GET",
+            data: '',
+            dataType: 'json',
+            contentType: 'json',
+            headers: {'content-type':'application/json' },
+            crossDomain:true,
+            //async:false,
+            success: function (data1) {
+                document.getElementById("text").innerHTML = "Showing Stats for: " + data1.character_list["0"].name.first;//display name assc. w/char id
+                const ubound = data1.character_list["0"].stats.weapon_stat_by_faction;//get total length of retrieved array
+                for (let i=0; i < ubound.length; i++) {
+                  var stat = data1.character_list["0"].stats.weapon_stat_by_faction[i].stat_name;//get name of stat type
+                  if (stat == "weapon_killed_by") {
+                    var item = data1.character_list["0"].stats.weapon_stat_by_faction[i].item_id;//retrieve item id only if the stat name is for 'killed by'
+                    if (item !== "0") {
+                      $.ajax({
+                        url: "https://census.daybreakgames.com/s:5550179/json/get/ps2:v2/item?item_id="+item+"&c:show=item_category_id,name.en&c:join=item_category",
+                        type: "GET",
+                        data:'',
+                        dataType: 'json',
+                        contentType: 'json',
+                        headers: {'content-type':'application/json' },
+                        crossDomain:true,
+                        //async:false,
+                        success: function (data2) {
+
+                          var vs = parseFloat(data1.character_list["0"].stats.weapon_stat_by_faction[i].value_vs);
+                          var nc = parseFloat(data1.character_list["0"].stats.weapon_stat_by_faction[i].value_nc);
+                          var tr = parseFloat(data1.character_list["0"].stats.weapon_stat_by_faction[i].value_tr);
+                          var sum = parseFloat(vs)+parseFloat(nc)+parseFloat(tr);
+                          var name = data2.item_list["0"].name.en;
+                          var cat_name = data2.item_list["0"].item_category_id_join_item_category.name.en
+
+                          //var table = document.getElementById("myTable");
+                          var row = table.insertRow(-1);
+                          var cell1 = row.insertCell(0);
+                          var cell2 = row.insertCell(1);
+                          var cell3 = row.insertCell(2);
+                          var cell4 = row.insertCell(3);
+                          var cell5 = row.insertCell(4);
+                          var cell6 = row.insertCell(5);
+
+                          cell1.innerHTML = name;
+                          cell2.innerHTML = cat_name;
+                          cell3.innerHTML = vs;
+                          cell4.innerHTML = nc;
+                          cell5.innerHTML = tr;
+                          cell6.innerHTML = sum;
+
+                          total += sum;
+                          document.getElementById("count").innerHTML = "Total Deaths: " + total;
+                        }
+                      })
+                    }
+                  }
+                }
+            }
+        })
+        document.getElementById("bCats").disabled=false;
+      }
+
+      function makeSelectFromColumn() {
+          $('#myTable2 tbody').empty();
+        var colA = document.querySelectorAll('td:nth-child(2)'); //select the column you want
+        var used = []; //to check for used values
+        var frag = document.createDocumentFragment(); //add option elements to this
+        for (var i=0; i<colA.length; ++i) { //for each item in the column
+          var text = colA[i].textContent; //get the text from the item
+          if (used.indexOf(text) == -1) { //if the text isn't already used
+            used.push(text); //store the text as used
+            var option = document.createElement('option'); //create option
+            option.textContent = text;
+            //text = text.replace(/[()]/g,'_');
+            frag.appendChild(option); //add option to frag
+
+            var s_table2 = document.getElementById("cat_body");
+            var b_row = s_table2.insertRow(-1);
+            var b_cell1 = b_row.insertCell(0);
+            var b_cell2 = b_row.insertCell(1);
+            b_cell1.innerHTML = text;
+
+            //Second Column
+            var total = 0;
+            $("#myTable tr:contains('"+text+"') td:nth-of-type(6)").each(function () {
+                var pending = parseInt($(this).text());
+                console.log("where table contains "+text+": "+ pending);
+                total += pending;
+            });
+            b_cell2.innerHTML = total;
+
+            //$("#myTable2 tr tr:last-of-type td:nth-of-type(6)").text(total);
+            console.log(total);
+          }
+        }
+      }
+
+      function showCats() {
+        document.getElementById("myTable").hidden=true;
+        document.getElementById("myTable2").hidden=false;
+        document.getElementById("bCats").disabled=true;
+        document.getElementById("bWeps").disabled=false;
+        makeSelectFromColumn()
+      }
+
+      function showWeps() {
+        document.getElementById("myTable").hidden=false;
+        document.getElementById("myTable2").hidden=true;
+        document.getElementById("bCats").disabled=false;
+        document.getElementById("bWeps").disabled=true;
+      }
+
+      function sortTable(n) {
+        console.log("Sorting Column "+n+"...");
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.getElementById("myTable");
+        switching = true;
+        dir = "desc";
+        while (switching) {
+          switching = false;
+          rows = table.rows;
+          for (i = 1; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[n];
+            y = rows[i + 1].getElementsByTagName("TD")[n];
+            var xContent = (isNaN(x.innerHTML)) ? (x.innerHTML.toLowerCase() === '-') ? 0 : x.innerHTML.toLowerCase() : parseFloat(x.innerHTML);
+            var yContent = (isNaN(y.innerHTML)) ? (y.innerHTML.toLowerCase() === '-') ? 0 : y.innerHTML.toLowerCase() : parseFloat(y.innerHTML);
+            if (dir == "asc") {
+              if (xContent > yContent) {
+                shouldSwitch = true;
+                break;
+              }
+            } else if (dir == "desc") {
+              if (xContent < yContent) {
+                shouldSwitch = true;
+                break;
+              }
+            }
+          }
+          if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            switchcount++;
+          } else {
+            if (switchcount == 0 && dir == "desc") {
+              dir = "asc";
+              switching = true;
+            }
+          }
+        }
+      }
+
+      function sortTable2(n) {
+        console.log("Sorting Column "+n+"...");
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.getElementById("cat_body");
+        switching = true;
+        dir = "desc";
+        while (switching) {
+          switching = false;
+          rows = table.rows;
+          for (i = 0; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[n];
+            y = rows[i + 1].getElementsByTagName("TD")[n];
+            var xContent = (isNaN(x.innerHTML)) ? (x.innerHTML.toLowerCase() === '-') ? 0 : x.innerHTML.toLowerCase() : parseFloat(x.innerHTML);
+            var yContent = (isNaN(y.innerHTML)) ? (y.innerHTML.toLowerCase() === '-') ? 0 : y.innerHTML.toLowerCase() : parseFloat(y.innerHTML);
+            if (dir == "asc") {
+              if (xContent > yContent) {
+                shouldSwitch = true;
+                break;
+              }
+            } else if (dir == "desc") {
+              if (xContent < yContent) {
+                shouldSwitch = true;
+                break;
+              }
+            }
+          }
+          if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            switchcount++;
+          } else {
+            if (switchcount == 0 && dir == "desc") {
+              dir = "asc";
+              switching = true;
+            }
+          }
+        }
+      }
+
+    </script>
+  </body>
+</html>
